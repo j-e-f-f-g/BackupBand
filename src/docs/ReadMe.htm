@@ -1,0 +1,55 @@
+<html><head><title>BackupBand Technical Reference</title></head><body>
+
+This document provides details about BackupBand's source code. It's intended for programmers who need to modify/compile the source.
+
+<p>BackupBand is a Linux music app. It is written in the C computer language. It can be compiled with the GNU C compiler, but since it uses no proprietary extensions, other compilers should work. The build
+environment uses GNU make.
+
+<p>For MIDI and audio I/O, ALSA is used. So the <b>libasound2-dev</b> package is required for compilation. JACK can alternately be used, so the <b>libjack-dev</b> or <b>libjack-jackd2-dev</b> package is
+required for compilation. But since BackupBand uses dynamic linking to JACK, no JACK runtime package (ie jackd1 or jackd2) is required for running BackupBand. In that case, BackupBand uses ALSA only. Some
+of the extra utilities used to create BackupBand "Styles" require the <b>lv2-dev</b> package for compilation.
+
+<p>For its GUI, BackupBand offers several choices. First, it can use cairo with an xorg backend. So the <b>libcairo2-dev</b> (<b>cairo-xlib-xrender</b>) package is required for compilation. Alternately, it
+can use cairo with a wayland backend. Alternately, it can use curses. So the <b>libncurses5-dev</b> package is required for compilation. Since BackupBand uses dynamic linking to its gui support, only the
+used GUI's runtime packages need be installed to run BackupBand. For example, if you configure BackupBand to use curses, then you don't need cairo, xorg, nor wayland installed to run BackupBand.
+
+<p>If you obtained the sources via a zip archive, all files should unzip to a single <b>BackupBand</b> directory containing several sub-directories. The <b>src</b> sub-directory contains all the source code. To
+compile BackupBand and all its extra utilities, open a terminal window in the BackupBand directory (where Makefile is), and type the command:
+
+<pre>make
+</pre>
+
+<p>This will create several binary files in the BackupBand directory, including the <i>BackupBand</i> executable.
+
+<p>The <i>BackupBand Source Code Configuration</i> tool is a bash script that allows you to customize BackupBand by choosing which features you want or don't want. The tool then modifies the source code to compile only those features you want. This creates a version of BackupBand that is leaner, faster, and easier to use.  You need to run this tool once only to customize BackupBand's source code. Every time you compile the source, you'll automatically get your custom version. If you update to the latest source code, your customization will automatically be applied to the new version.
+
+<p>If you later decide you'd like to restore a feature that you have removed, simply run the tool again to enable that feature.
+
+<p>To run the tool, open a terminal in the BackupBand folder (where the Makefile is) and type:
+
+<pre>./configure.sh</pre>
+
+<p>Then just follow the instructions.
+
+<p><hr size=5 noshade><h2><p align=center><font color=red><a name="GUI">GUI Initialization</a></font></p></h2>
+
+<p>The first thing BackupBand does is choose/initialize its GUI. The code for each GUI subsystem (xorg, wayland, curses) is contained in its own shared dynamic library. For example, all BackupBand's xorg
+code is contained in <b>gui_xorg.so</b>. All wayland code is contained in <b>gui_wayland.so</b>. And all curses code is contained in <b>gui_curses.so</b>. All 3 libs contain the same callable functions. For
+example. all 3 have a GuiGetMsg function which returns the next input event in a generic format defined in <>GuiCtls.h<>.
+
+<p><hr size=5 noshade><h2><p align=center><font color=red><a name="CONFIG">Configuration file</a></font></p></h2>
+
+<p>After loading the gui lib, BackupBand loads a configuration file (named BackupBand0) containing the user's settings. See <i>ConfigFile.c</i>. This config file may not exist (and will not until the user chooses
+to save his settings). So first, all those settings are initialized to default values.
+
+<p>The file is a binary format where each setting is stored as two values -- a unique "id number", followed by the setting's value. The id number is one byte whose value is 1 to 255. An id of 0 marks the file's
+end. For example, the reverb master volume has an id of 137. (See CONFIGKEY_REVVOL in <i>ConfigFile.h</i>.) The setting's value is one byte whose value is 0 to 100. So reverb volume is stored as 2 bytes. Some
+settings' values require more than one byte. For a setting whose value is one byte, its id number is in the range 128 to 199. For settings whose value is two bytes, the id number is in the range 16 to 79. For
+settings whose value is four bytes, the id number is in the range 80 to 127. Ids 1 to 15 are reserved for storing audio/midi device names. Ids 200 to 255 are for storing settings with values more than 4 bytes.
+
+<p>A setting is stored in the config file only if the user changes its value different than the default.
+<p>An audio/midi device name isn't stored as a string. Instead it's converted to a unique 32-bit hash value via hash_string(). This avoids allocating buffers, and allows faster compares of several device
+names. When a device name is loaded from the config file, the hash value is stored in a global variable. The device is not opened until later. Note that a hash value of 0 (ie an empty string) means "no device
+specified". So hash values initialize to 0.
+
+</body></html>
